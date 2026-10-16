@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Support Chat</title>
+<style>
+  body { font-family: system-ui, sans-serif; background: #f3f4f6; margin: 0; display: flex; justify-content: center; }
+  #chat { width: 100%; max-width: 480px; height: 100vh; display: flex; flex-direction: column; background: #fff; }
+  header { padding: 14px 16px; background: #1d4ed8; color: #fff; font-weight: 600; }
+  #log { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+  .msg { max-width: 80%; padding: 10px 14px; border-radius: 14px; line-height: 1.4; white-space: pre-wrap; }
+  .user { align-self: flex-end; background: #1d4ed8; color: #fff; }
+  .bot { align-self: flex-start; background: #e5e7eb; color: #111; }
+  form { display: flex; gap: 8px; padding: 12px; border-top: 1px solid #e5e7eb; }
+  input { flex: 1; padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 16px; }
+  button { padding: 10px 16px; border: 0; border-radius: 8px; background: #1d4ed8; color: #fff; font-size: 16px; cursor: pointer; }
+  button:disabled { opacity: .5; cursor: default; }
+</style>
+</head>
+<body>
+<div id="chat">
+  <header>Acme Support</header>
+  <div id="log"></div>
+  <form id="form">
+    <input id="input" placeholder="Type your question..." autocomplete="off" required maxlength="2000">
+    <button id="send">Send</button>
+  </form>
+</div>
+<script>
+  const log = document.getElementById("log");
+  const form = document.getElementById("form");
+  const input = document.getElementById("input");
+  const send = document.getElementById("send");
+  const sessionId = crypto.randomUUID();
+
+  function add(text, who) {
+    const div = document.createElement("div");
+    div.className = "msg " + who;
+    div.textContent = text;   // textContent prevents HTML injection
+    log.appendChild(div);
+    log.scrollTop = log.scrollHeight;
+    return div;
+  }
+
+  add("Hi! How can I help you today?", "bot");
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const text = input.value.trim();
+    if (!text) return;
+    add(text, "user");
+    input.value = "";
+    send.disabled = true;
+    const typing = add("Typing...", "bot");
+    try {
+      const res = await fetch("/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ session_id: sessionId, message: text }),
+      });
+      const data = await res.json();
+      typing.textContent = res.ok ? data.reply : "Sorry, something went wrong. Please email support@acme.example.";
+    } catch {
+      typing.textContent = "Connection problem. Please try again.";
+    }
+    send.disabled = false;
+    input.focus();
+  });
+</script>
+</body>
+</html>
